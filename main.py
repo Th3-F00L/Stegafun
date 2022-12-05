@@ -1,5 +1,6 @@
 from convert import Convert
 from encode import Encode
+from decode import Decode
 from pixel_enum import Pixel
 import base64
 import os
@@ -17,8 +18,7 @@ from pathlib import Path
 
 
 
-def hide_message(msg: str):
-    pixel_choice = Pixel.BLUE
+def hide_msg(msg: str, pixel_choice):
     root = tk.Tk()
     root.withdraw()
 
@@ -27,14 +27,12 @@ def hide_message(msg: str):
                                           initialdir=Path.home() / 'Pictures',
                                           filetypes=file_types)
     img_extension = '.' + img_path.split('.')[-1]
-
+    delimiter = ('1' * 15) + '0'
     if img_path:
         img = Image.open(img_path)
-        delimiter = ('1'*15)+'0'
         msg_binary = Convert.string_to_binary(msg) + delimiter
-        print(msg_binary)
 
-        if img.mode in ('RGBA'):
+        if img.mode in 'RGBA':
             img = img.convert('RGBA')
             pixels = img.getdata()
             new_pixels = []
@@ -44,7 +42,7 @@ def hide_message(msg: str):
                 if msg_binary_index < len(msg_binary):
                     new_pixel = Encode.sequential(Convert.rgb_to_hex(pixel[0], pixel[1], pixel[2]),
                                                   msg_binary[msg_binary_index], pixel_choice)
-                    if new_pixel == None
+                    if new_pixel == None:
                         new_pixels.append(pixel)
                     else:
                         r, g, b = Convert.hex_to_rgb(new_pixel)
@@ -56,19 +54,34 @@ def hide_message(msg: str):
             result_img.putdata(new_pixels)
             result_img.save(secret_img_path, "PNG")
             return f"Operation completed. Secret image saved at {secret_img_path}"
+        return "Image uses an incompatible image mode. Please choose another image."
 
-       return "Image uses an incompatible image mode. Please choose another image."
+def retrieve_msg(pixel_choice: Pixel):
+    file_types = [('PNGs', '*.png')]
+    filename = filedialog.askopenfilename(title='Please Select an Image Retrieve Your Message From',
+                                         initialdir=Path.home() / 'Pictures',
+                                         filetypes=file_types)
+    img = Image.open(filename)
+    binary_msg = ''
+    delimiter = ('1'*15)+'0'
 
+    if img.mode in 'RGBA':
+        img = img.convert('RGBA')
+        pixels = img.getdata()
+        for pixel in pixels:
+            binary_digit = Decode.sequential(Convert.rgb_to_hex(pixel[0], pixel[1], pixel[2]), pixel_choice)
+            if binary_digit is None:
+                pass
+            else:
+                binary_msg = binary_msg + binary_digit
+                if binary_msg[-16:] == delimiter:
+                    print("Operation Completed Successfully")
+                    return Convert.binary_to_string(binary_msg[:-16])
+    return "Image uses an incompatible image mode. Could not retrieve message."
 
+def main():
+    pass
 
-def base64_to_binstr(orig_img_base64):
-    return "".join(["{:08b}".format(x) for x in base64.decodebytes(orig_img_base64)])
+print(hide_msg('This is a big fat test as to whether or not this works, lets see if we can make the size bigger', Pixel.BLUE))
+print(retrieve_msg(Pixel.BLUE))
 
-
-# def show_image(img_path):
-#     img = cv2.imread(img_path)
-#     cv2.imshow('image', img)
-#     cv2.waitKey()
-
-
-hide_message('Hello World!')
